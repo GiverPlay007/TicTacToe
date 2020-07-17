@@ -7,7 +7,10 @@ import java.awt.Graphics;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferStrategy;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 
+import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 
 public class Game extends Canvas implements Runnable, MouseListener
@@ -17,13 +20,24 @@ public class Game extends Canvas implements Runnable, MouseListener
 	private static final int WIDTH = 307;
 	private static final int HEIGHT = 330;
 	private static final int TILE = 100;
+	private static final int PLAYER = 1;
+	private static final int ENEMY = -1;
+	private static final int NONE = 0;
+	private static final int EMPATE = -2;
 	
 	private int[][] tabuleiro = new int[3][3];
 	
+	private BufferedImage cross;
+	private BufferedImage circle;
 	private Thread thread;
 	private JFrame frame;
 	
 	private boolean isRunning = false;
+	private boolean press = false;
+	
+	private int current = PLAYER;
+	private int mx = 0;
+	private int my = 0;
 	
 	public static void main(String[] args)
 	{
@@ -32,7 +46,9 @@ public class Game extends Canvas implements Runnable, MouseListener
 	
 	public Game()
 	{
+		setupAssets();
 		setupWindow();
+		resetTabuleiro();
 	}
 	
 	public void setupWindow()
@@ -41,10 +57,36 @@ public class Game extends Canvas implements Runnable, MouseListener
 		frame.setResizable(false);
 		frame.setPreferredSize(new Dimension(WIDTH, HEIGHT));
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setLocationRelativeTo(null);
 		frame.pack();
+		frame.setLocationRelativeTo(null);
 		frame.add(this);
 		frame.setVisible(true);
+		
+		addMouseListener(this);
+	}
+	
+	private void setupAssets()
+	{
+		try
+		{
+			cross = ImageIO.read(getClass().getResource("/Cross.png"));
+			circle = ImageIO.read(getClass().getResource("/Circle.png"));
+		}
+		catch(IOException e)
+		{
+			System.out.println("Erro ao carregar as imagens");
+		}
+	}
+	
+	public void resetTabuleiro()
+	{
+		for(int xx = 0; xx < tabuleiro.length; xx++)
+		{
+			for(int yy = 0; yy < tabuleiro.length; yy++)
+			{
+				tabuleiro[xx][yy] = 0;
+			}
+		}
 	}
 	
 	public synchronized void start()
@@ -84,7 +126,31 @@ public class Game extends Canvas implements Runnable, MouseListener
 	
 	private void update()
 	{
+		if(press)
+		{
+			press = false;
+			mx /= 100;
+			my /= 100;
+			
+			if(current == PLAYER && tabuleiro[mx][my] == 0)
+			{
+				tabuleiro[mx][my] = PLAYER;
+				current = ENEMY;
+			}
+			else if(current == ENEMY && tabuleiro[mx][my] == 0)
+			{
+				tabuleiro[mx][my] = ENEMY;
+				current = PLAYER;
+			}
+		}
 		
+		int result = validateVictory();
+		
+		if(result != EMPATE)
+		{
+			System.out.println((result == PLAYER ? "Player" : "Oponente") + " venceu!");
+			System.exit(0);
+		}
 	}
 	
 	private void render()
@@ -101,7 +167,7 @@ public class Game extends Canvas implements Runnable, MouseListener
 		g.setColor(Color.WHITE);
 		g.fillRect(0, 0, WIDTH, HEIGHT);
 		draw(g);
-	
+		
 		bs.show();	
 	}
 	
@@ -113,25 +179,74 @@ public class Game extends Canvas implements Runnable, MouseListener
 			{
 				g.setColor(Color.BLACK);
 				g.drawRect(TILE * xx, TILE * yy, TILE, TILE);
+				
+				if(tabuleiro[xx][yy] == PLAYER)
+				{
+					g.drawImage(cross, xx * 100 + 25, yy * 100 + 25, null);
+				}
+				else if(tabuleiro[xx][yy] == ENEMY)
+				{
+					g.drawImage(circle, xx * 100 + 25, yy * 100 + 25, null);
+				}
 			}
 		}
 	}
 	
-	@Override
-	public void mousePressed(MouseEvent arg0)
+	private int validateVictory()
 	{
+		if(tabuleiro[0][0] != 0 && tabuleiro[0][0] == tabuleiro[0][1] && tabuleiro[0][1] == tabuleiro[0][2])
+			return tabuleiro[0][0];
 		
+		if(tabuleiro[1][0] != 0 && tabuleiro[1][0] == tabuleiro[1][1] && tabuleiro[1][1] == tabuleiro[1][2])
+			return tabuleiro[1][0];
+		
+		if(tabuleiro[2][0] != 0 && tabuleiro[2][0] == tabuleiro[2][1] && tabuleiro[2][1] == tabuleiro[2][2])
+			return tabuleiro[2][0];
+		
+		if(tabuleiro[0][0] != 0 && tabuleiro[0][0] == tabuleiro[1][0] && tabuleiro[1][0] == tabuleiro[2][0])
+			return tabuleiro[0][0];
+		
+		if(tabuleiro[0][1] != 0 && tabuleiro[0][1] == tabuleiro[1][1] && tabuleiro[1][1] == tabuleiro[2][1])
+			return tabuleiro[0][1];
+		
+		if(tabuleiro[0][2] != 0 && tabuleiro[0][2] == tabuleiro[1][2] && tabuleiro[1][2] == tabuleiro[2][2])
+			return tabuleiro[0][2];
+		
+		if(tabuleiro[0][0] != 0 && tabuleiro[0][0] == tabuleiro[1][1] && tabuleiro[1][1] == tabuleiro[2][2])
+			return tabuleiro[0][0];
+		
+		if(tabuleiro[2][0] != 0 && tabuleiro[2][0] == tabuleiro[1][1] && tabuleiro[1][1] == tabuleiro[0][2])
+			return tabuleiro[2][0];
+		
+		for(int xx = 0; xx < tabuleiro.length; xx++)
+		{
+			for(int yy = 0; yy < tabuleiro.length; yy++)
+			{
+				if(tabuleiro[xx][yy] == 0)
+					return NONE;
+			}
+		}
+			
+		return EMPATE;
+	}
+	
+	@Override
+	public void mousePressed(MouseEvent e)
+	{
+		mx = e.getX();
+		my = e.getY();
+		press = true;
 	}
 	
 	@Override
 	public void mouseClicked(MouseEvent arg0){}
-
+	
 	@Override
 	public void mouseEntered(MouseEvent arg0){}
-
+	
 	@Override
 	public void mouseExited(MouseEvent arg0){}
-
+	
 	@Override
 	public void mouseReleased(MouseEvent arg0){}
 }

@@ -55,7 +55,7 @@ public class Game extends Canvas implements Runnable, MouseListener
 	
 	public void setupWindow()
 	{
-		frame = new JFrame("Game 11 - TicTacToe");
+		frame = new JFrame("Game 12 - TicTacToe");
 		frame.setResizable(false);
 		frame.setPreferredSize(new Dimension(WIDTH, HEIGHT));
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
